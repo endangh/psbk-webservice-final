@@ -17,22 +17,32 @@ import org.springframework.web.bind.annotation.RestController;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import psbk.webservice.rest.helper.BasicAuth;
 import psbk.webservice.rest.model.Mahasiswa;
 import psbk.webservice.rest.model.Status;
+import psbk.webservice.rest.service.MahasiswaService;
 
 @RestController
 public class MahasiswaController {
 
 	private Gson gson = new GsonBuilder().setDateFormat("dd/MM/yyyy").create();
 	private Map<String, Mahasiswa> map = new HashMap<String, Mahasiswa>();
-
+	private MahasiswaService mhsService = new MahasiswaService();
+	
 	@ResponseBody
 	@RequestMapping(value = "/mhs/insert", method = RequestMethod.POST)
 	public String insert(HttpServletRequest servletRequest,
 			@RequestBody String json) {
 
+		if (!checkAccess(servletRequest)) {
+			Status status = new Status();
+			status.setKode("408");
+			status.setPesan("Hak akses ditolak");
+			return gson.toJson(status);
+		}
+		
 		Mahasiswa mhs = gson.fromJson(json, Mahasiswa.class);
-		map.put(mhs.getNrp(), mhs);
+		mhsService.insert(mhs);
 
 		Status status = new Status();
 		status.setKode("200");
@@ -62,6 +72,16 @@ public class MahasiswaController {
 		List<Mahasiswa> list = new ArrayList<Mahasiswa>();
 		list.addAll(map.values());
 		return gson.toJson(list);
+	}
+
+	public boolean checkAccess(HttpServletRequest servletRequest) {
+		String username = "psbk";
+		String password = "12345";
+
+		BasicAuth basicAuth = new BasicAuth(servletRequest);
+
+		return username.equals(basicAuth.getUsername())
+				&& password.equals(basicAuth.getPassword());
 	}
 
 }
